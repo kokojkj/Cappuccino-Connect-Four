@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Cappuccino Connect Four</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #F5E6D3;
+            color: #5D4037;
+        }
+
+        .game-container {
+            background-color: #D2B48C;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        #board {
+            display: grid;
+            grid-template-columns: repeat(7, 70px);
+            gap: 10px;
+            background-color: #8D6E63;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .cell {
+            width: 70px;
+            height: 70px;
+            background-color: #EFEBE9;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .cell:hover {
+            transform: scale(1.05);
+        }
+
+        .player-red {
+            background-color: #D32F2F;
+        }
+
+        .player-yellow {
+            background-color: #FBC02D;
+        }
+
+        #status {
+            text-align: center;
+            margin-top: 15px;
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #5D4037;
+        }
+
+        .game-btn {
+            display: block;
+            margin: 15px auto;
+            padding: 10px 20px;
+            background-color: #6D4C41;
+            color: #F5E6D3;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            font-size: 1em;
+        }
+
+        .game-btn:hover {
+            background-color: #4E342E;
+        }
+
+        #start-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        #start-image {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div id="start-screen">
+            <h1>Cappuccino Connect Four</h1>
+            <img id="start-image" src="ready.jpg" alt="Connect Four Game">
+            <button id="start-btn" class="game-btn">Start Game</button>
+        </div>
+        
+        <div id="game-screen" class="hidden">
+            <div id="board"></div>
+            <div id="status">Red's Turn</div>
+            <div>
+                <button id="reset-btn" class="game-btn">Reset Game</button>
+                <button id="quit-btn" class="game-btn">Quit Game</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class ConnectFour {
+            constructor() {
+                this.rows = 6;
+                this.cols = 7;
+                this.board = Array(this.rows).fill().map(() => Array(this.cols).fill(null));
+                this.currentPlayer = 'red';
+                this.gameOver = false;
+
+                this.startScreen = document.getElementById('start-screen');
+                this.gameScreen = document.getElementById('game-screen');
+                this.boardElement = document.getElementById('board');
+                this.statusElement = document.getElementById('status');
+
+                this.startBtn = document.getElementById('start-btn');
+                this.resetBtn = document.getElementById('reset-btn');
+                this.quitBtn = document.getElementById('quit-btn');
+
+                this.addEventListeners();
+            }
+
+            addEventListeners() {
+                this.startBtn.addEventListener('click', () => this.startGame());
+                this.boardElement.addEventListener('click', (e) => this.handleCellClick(e));
+                this.resetBtn.addEventListener('click', () => this.resetGame());
+                this.quitBtn.addEventListener('click', () => this.quitGame());
+            }
+
+            startGame() {
+                this.startScreen.classList.add('hidden');
+                this.gameScreen.classList.remove('hidden');
+                this.initializeBoard();
+            }
+
+            quitGame() {
+                this.gameScreen.classList.add('hidden');
+                this.startScreen.classList.remove('hidden');
+            }
+
+            initializeBoard() {
+                this.board = Array(this.rows).fill().map(() => Array(this.cols).fill(null));
+                this.currentPlayer = 'red';
+                this.gameOver = false;
+
+                this.boardElement.innerHTML = '';
+                
+                for (let row = 0; row < this.rows; row++) {
+                    for (let col = 0; col < this.cols; col++) {
+                        const cell = document.createElement('div');
+                        cell.classList.add('cell');
+                        cell.dataset.row = row;
+                        cell.dataset.col = col;
+                        this.boardElement.appendChild(cell);
+                    }
+                }
+
+                this.statusElement.textContent = "Red's Turn";
+            }
+
+            handleCellClick(event) {
+                if (this.gameOver) return;
+
+                const col = event.target.dataset.col;
+                if (col === undefined) return;
+
+                const row = this.findLowestEmptyRow(parseInt(col));
+                if (row !== -1) {
+                    this.placePiece(row, parseInt(col));
+                }
+            }
+
+            findLowestEmptyRow(col) {
+                for (let row = this.rows - 1; row >= 0; row--) {
+                    if (this.board[row][col] === null) {
+                        return row;
+                    }
+                }
+                return -1;
+            }
+
+            placePiece(row, col) {
+                this.board[row][col] = this.currentPlayer;
+                const cell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
+                cell.classList.add(`player-${this.currentPlayer}`);
+
+                if (this.checkWin(row, col)) {
+                    this.endGame(`${this.currentPlayer.toUpperCase()} Wins!`);
+                } else if (this.checkDraw()) {
+                    this.endGame("It's a Draw!");
+                } else {
+                    this.switchPlayer();
+                }
+            }
+
+            checkWin(row, col) {
+                const directions = [
+                    {dx: 1, dy: 0},
+                    {dx: 0, dy: 1},
+                    {dx: 1, dy: 1},
+                    {dx: 1, dy: -1}
+                ];
+
+                for (let dir of directions) {
+                    if (this.countConsecutive(row, col, dir.dx, dir.dy) >= 4) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            countConsecutive(row, col, dx, dy) {
+                const player = this.board[row][col];
+                let count = 1;
+
+                for (let i = 1; i < 4; i++) {
+                    const newRow = row + i * dy;
+                    const newCol = col + i * dx;
+                    if (!this.isValidCell(newRow, newCol) || this.board[newRow][newCol] !== player) break;
+                    count++;
+                }
+
+                for (let i = 1; i < 4; i++) {
+                    const newRow = row - i * dy;
+                    const newCol = col - i * dx;
+                    if (!this.isValidCell(newRow, newCol) || this.board[newRow][newCol] !== player) break;
+                    count++;
+                }
+
+                return count;
+            }
+
+            isValidCell(row, col) {
+                return row >= 0 && row < this.rows && col >= 0 && col < this.cols;
+            }
+
+            checkDraw() {
+                return this.board.every(row => row.every(cell => cell !== null));
+            }
+
+            switchPlayer() {
+                this.currentPlayer = this.currentPlayer === 'red' ? 'yellow' : 'red';
+                this.statusElement.textContent = `${this.currentPlayer.toUpperCase()}'s Turn`;
+            }
+
+            endGame(message) {
+                this.gameOver = true;
+                this.statusElement.textContent = message;
+            }
+
+            resetGame() {
+                this.initializeBoard();
+            }
+        }
+
+        new ConnectFour();
+    </script>
+</body>
+</html>
